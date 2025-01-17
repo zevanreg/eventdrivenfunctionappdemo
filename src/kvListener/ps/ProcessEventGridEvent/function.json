@@ -1,0 +1,19 @@
+{
+  "bindings": [
+    {
+      "type": "eventGridTrigger",
+      "name": "eventGridEvent",
+      "direction": "in"
+    },
+    { 
+      "name": "Secrets",
+      "type": "cosmosDB",
+      "databaseName": "%cosmosDatabaseName%",
+      "containerName": "%cosmosSecretsContainerName%",
+      "createIfNotExists": true,
+      "connection": "cosmosdb",
+      "direction": "out" 
+    }
+
+  ]
+}

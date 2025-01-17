@@ -1,0 +1,5 @@
+CREATE TABLE [dbo].[KeyVaults]
+(
+  [Id] INT NOT NULL PRIMARY KEY IDENTITY,
+  [Name] NVARCHAR(128) NOT NULL
+)
