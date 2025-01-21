@@ -1,13 +1,10 @@
 {
   "bindings": [
     {
-      "type": "eventHubTrigger",
-      "name": "eventHubMessage",
+      "name": "Timer",
+      "type": "timerTrigger",
       "direction": "in",
-      "eventHubName": "%eventHubName%",
-      "connection": "eventhub",
-      "cardinality": "one",
-      "consumerGroup": "$Default"
+      "schedule": "0 * * * * *"
     },
     { 
       "name": "ConfigIn",
@@ -40,6 +37,15 @@
       "type": "cosmosDB",
       "databaseName": "%cosmosDatabaseName%",
       "containerName": "SecretsAccessedEvents",
+      "createIfNotExists": true,
+      "connection": "cosmosdb",
+      "direction": "out" 
+    },
+    { 
+      "name": "ConfigOut",
+      "type": "cosmosDB",
+      "databaseName": "%cosmosDatabaseName%",
+      "containerName": "Config",
       "createIfNotExists": true,
       "connection": "cosmosdb",
       "direction": "out" 
