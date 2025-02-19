@@ -2,6 +2,7 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 var builder = FunctionsApplication.CreateBuilder(args);
 
@@ -19,7 +20,8 @@ var host = new HostBuilder()
         var keyVaultName = context.Configuration["keyVaultName"];
         services.AddSingleton<KeyVaultService>(provider =>
         {
-            return new KeyVaultService(keyVaultName);
+            var logger = provider.GetRequiredService<ILogger<KeyVaultService>>();
+            return new KeyVaultService(keyVaultName, logger);
         });
         services.AddLogging();
     })
