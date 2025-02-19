@@ -19,6 +19,6 @@ public class AccessEventInfo
         LastAccessed = row.GetDateTimeOffset("TimeGenerated").Value.DateTime;
         SubscriptionId = row["SubscriptionId"].ToString();
         ResourceGroup = row["ResourceGroup"].ToString();
-        Id = $"{AkvName}_{ObjectId}";
+        Id = $"{ObjectId}_{AkvName}_{SecretName}";
     }
 }
