@@ -1,9 +1,8 @@
 param keyVaultName string
-param secretExpiryEpoch int
 param location string
 param userManagedIdentityName string
-param functionName string
-param functionAppId string
+param logAnalyticsId string
+param currentDate string = utcNow()
 
 resource userManagedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-07-31-PREVIEW' existing = {
   name: userManagedIdentityName
@@ -23,19 +22,41 @@ resource keyVault 'Microsoft.KeyVault/vaults@2024-04-01-preview' = {
   }
 }
 
-resource keyVaultSecret 'Microsoft.KeyVault/vaults/secrets@2024-04-01-preview' = {
+resource keyVaultSecret1 'Microsoft.KeyVault/vaults/secrets@2024-04-01-preview' = {
   parent: keyVault
-  name: 'testkey'
+  name: 'testkey1'
   properties: {
-    value: 'testvalue'
+    value: 'testvalue1'
     attributes: {
-      exp: secretExpiryEpoch
+      exp: dateTimeToEpoch(dateTimeAdd(currentDate, 'P60D'))
+    }
+  }
+}
+
+resource keyVaultSecret2 'Microsoft.KeyVault/vaults/secrets@2024-04-01-preview' = {
+  parent: keyVault
+  name: 'testkey2'
+  properties: {
+    value: 'testvalue2'
+    attributes: {
+      exp: dateTimeToEpoch(dateTimeAdd(currentDate, 'P90D'))
+    }
+  }
+}
+
+resource keyVaultSecret3 'Microsoft.KeyVault/vaults/secrets@2024-04-01-preview' = {
+  parent: keyVault
+  name: 'testkey3'
+  properties: {
+    value: 'testvalue3'
+    attributes: {
+      exp: dateTimeToEpoch(dateTimeAdd(currentDate, 'P120D'))
     }
   }
 }
 
 resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(resourceGroup().id, userManagedIdentity.id, 'b86a8fe1-ff2a-4a64-8101-0c68e1b8f4e0')
+  name: guid(resourceGroup().id, userManagedIdentity.id, '4633458b-17de-408a-b874-0445c86b69e6')
   scope: keyVault
   properties: {
     roleDefinitionId: '/subscriptions/${subscription().subscriptionId}/providers/Microsoft.Authorization/roleDefinitions/4633458b-17de-408a-b874-0445c86b69e6' // Key Vault Secrets User role
@@ -43,33 +64,20 @@ resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   }
 }
 
-resource eventGridSystemTopic 'Microsoft.EventGrid/systemTopics@2021-12-01' = {
-  name: 'eg-kv-system-topic'
-  location: location
+resource diagnosticSetting 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = {
+  name: 'AuditLogs'
+  scope: keyVault
   properties: {
-    source: keyVault.id
-    topicType: 'Microsoft.KeyVault.vaults'
-  }
-}
-
-resource eventGridSubscription 'Microsoft.EventGrid/systemTopics/eventSubscriptions@2021-12-01' = {
-  name: 'eg-kv-af-sub'
-  parent: eventGridSystemTopic
-  properties: {
-    destination: {
-      endpointType: 'AzureFunction'
-      properties: {
-        resourceId: '${functionAppId}/functions/${functionName}'
-        maxEventsPerBatch: 1
-        preferredBatchSizeInKilobytes: 64
+    workspaceId: logAnalyticsId
+    logs: [
+      {
+        category: 'AuditEvent'
+        enabled: true
+        retentionPolicy: {
+          days: 0
+          enabled: false
+        }
       }
-    }
-    filter: {
-      includedEventTypes: [
-        'Microsoft.KeyVault.SecretNewVersionCreated'
-      ]
-      enableAdvancedFilteringOnArrays: true
-    }
-    eventDeliverySchema: 'EventGridSchema'
+    ]
   }
 }

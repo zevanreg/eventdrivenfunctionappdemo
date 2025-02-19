@@ -1,5 +1,9 @@
 param cosmosDbAccountName string
 param cosmosDbDatabaseName string
+param cosmosDbSecretsContainerName string
+param cosmosDbSecretsAccessContainerName string
+param cosmosDbWorkloadsContainerName string
+param cosmosDbConfigContainerName string
 param userManagedIdentityPrincipalId string
 param location string
 
@@ -34,10 +38,10 @@ resource cosmosDbDatabase 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@20
 
 resource cosmosDbContainerSecrets 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-03-15' = {
   parent: cosmosDbDatabase
-  name: 'Secrets'
+  name: cosmosDbSecretsContainerName
   properties: {
     resource: {
-      id: 'Secrets'
+      id: cosmosDbSecretsContainerName
       partitionKey: {
         paths: ['/akvName']
         kind: 'Hash'
@@ -48,10 +52,10 @@ resource cosmosDbContainerSecrets 'Microsoft.DocumentDB/databaseAccounts/sqlData
 
 resource cosmosDbContainerWorkloads 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-03-15' = {
   parent: cosmosDbDatabase
-  name: 'Workloads'
+  name: cosmosDbWorkloadsContainerName
   properties: {
     resource: {
-      id: 'Workloads'
+      id: cosmosDbWorkloadsContainerName
       partitionKey: {
         paths: ['/subscriptionID']
         kind: 'Hash'
@@ -60,14 +64,28 @@ resource cosmosDbContainerWorkloads 'Microsoft.DocumentDB/databaseAccounts/sqlDa
   }
 }
 
-resource cosmosDbContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-03-15' = {
+resource cosmosDbContainerSecretAccess 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-03-15' = {
   parent: cosmosDbDatabase
-  name: 'SecretsAccessedEvents'
+  name: cosmosDbSecretsAccessContainerName
   properties: {
     resource: {
-      id: 'SecretsAccessedEvents'
+      id: cosmosDbSecretsAccessContainerName
       partitionKey: {
         paths: ['/objectID']
+        kind: 'Hash'
+      }
+    }
+  }
+}
+
+resource cosmosDbContainerConfig 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2023-03-15' = {
+  parent: cosmosDbDatabase
+  name: cosmosDbConfigContainerName
+  properties: {
+    resource: {
+      id: cosmosDbConfigContainerName
+      partitionKey: {
+        paths: ['/id']
         kind: 'Hash'
       }
     }

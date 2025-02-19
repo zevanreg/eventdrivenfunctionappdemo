@@ -1,14 +1,16 @@
 param location string
-param functionAppName string
 param storageAccountName string
 param keyVaultName string
 param userManagedIdentityName string
-param blobContainerName string
 param cosmosDbAccountEndpoint string
 param cosmosDbDatabaseName string
 param cosmosDbSecretsContainerName string
-param eventHubNamespaceName string
-param eventHubName string
+param cosmosDbSecretsAccessContainerName string
+param cosmosDbWorkloadsContainerName string
+param cosmosDbConfigContainerName string
+param workspaceId string
+
+var kvEventsListenerAppName = 'kvEventsListener'
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' existing = {
   name: storageAccountName
@@ -19,11 +21,13 @@ resource userManagedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2
 }
 
 resource appServicePlan 'Microsoft.Web/serverfarms@2024-04-01' = {
-  name: 'consumptionPlan'
+  name: 'appServicePlan'
   location: location
   sku: {
-    name: 'FC1'
-    tier: 'FlexConsumption'
+    name: 'S1'
+    tier: 'Standard'
+    family: 'S'
+    capacity: 1
   }
   kind: 'linux'
   properties: {
@@ -32,21 +36,31 @@ resource appServicePlan 'Microsoft.Web/serverfarms@2024-04-01' = {
   }
 }
 
-resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
-  name: functionAppName
+resource functionAppListener 'Microsoft.Web/sites@2024-04-01' = {
+  name: kvEventsListenerAppName
   location: location
-  kind: 'functionapp'
+  kind: 'functionapp,linux'
   properties: {
+    reserved: true
     serverFarmId: appServicePlan.id
     siteConfig: {
+      linuxFxVersion: 'DOTNET-ISOLATED|9.0'
       appSettings: [
         {
           name: 'AzureWebJobsStorage'
           value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
         }
         {
-          name: 'testkey'
-          value: '@Microsoft.KeyVault(SecretUri=https://${keyVaultName}.vault.azure.net/secrets/testkey/)'
+          name: 'testkey1'
+          value: '@Microsoft.KeyVault(SecretUri=https://${keyVaultName}.vault.azure.net/secrets/testkey1/)'
+        }
+        {
+          name: 'testkey2'
+          value: '@Microsoft.KeyVault(SecretUri=https://${keyVaultName}.vault.azure.net/secrets/testkey2/)'
+        }
+        {
+          name: 'testkey3'
+          value: '@Microsoft.KeyVault(SecretUri=https://${keyVaultName}.vault.azure.net/secrets/testkey3/)'
         }
         {
           name: 'cosmosdb__accountEndpoint'
@@ -69,49 +83,52 @@ resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
           value: cosmosDbSecretsContainerName
         }
         {
-          name: 'eventHubName'
-          value: eventHubName
+          name: 'cosmosSecretsAccessContainerName'
+          value: cosmosDbSecretsAccessContainerName
         }
         {
-          name: 'eventhub__fullyQualifiedNamespace'
-          value: '${eventHubNamespaceName}.servicebus.windows.net'
+          name: 'cosmosWorkloadsContainerName'
+          value: cosmosDbWorkloadsContainerName
         }
         {
-          name: 'eventhub__credential'
-          value: 'managedidentity'
+          name: 'cosmosConfigContainerName'
+          value: cosmosDbConfigContainerName
         }
         {
-          name: 'eventhub__clientId'
+          name: 'keyVaultName'
+          value: keyVaultName
+        }
+        {
+          name: 'workspaceId'
+          value: workspaceId
+        }
+        {
+          name: 'FUNCTIONS_WORKER_RUNTIME'
+          value: 'dotnet-isolated'
+        }
+        {
+          name: 'FUNCTIONS_EXTENSION_VERSION'
+          value: '~4'
+        }
+        {
+          name: 'WEBSITE_NODE_DEFAULT_VERSION'
+          value: '~14'
+        }
+        {
+          name: 'WEBSITE_RUN_FROM_PACKAGE'
+          value: '1'
+        }
+        {
+          name: 'AZURE_CLIENT_ID'
           value: userManagedIdentity.properties.clientId
         }
-        // {
-        //   name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
-        //   value: applicationInsights.properties.InstrumentationKey
-        // }
+        {
+          name: 'functionAppResourceId'
+          value: resourceId('Microsoft.Web/sites', kvEventsListenerAppName)
+        }        
       ]
     }
     keyVaultReferenceIdentity: userManagedIdentity.id
-    functionAppConfig: {
-      deployment: {
-        storage: {
-          type: 'blobContainer'
-          value: '${storageAccount.properties.primaryEndpoints.blob}${blobContainerName}'
-          authentication: {
-            type: 'StorageAccountConnectionString'
-            storageAccountConnectionStringName: 'AzureWebJobsStorage'
-          }
-        }
-      }
-      scaleAndConcurrency: {
-        maximumInstanceCount: 100
-        instanceMemoryMB: 2048
-      }
-      runtime: {
-        name: 'powershell'
-        version: '7.4'
-      }
-
-    }
   }
   identity: {
     type: 'UserAssigned'
@@ -121,17 +138,54 @@ resource functionApp 'Microsoft.Web/sites@2024-04-01' = {
   }
 }
 
+resource functionAppReader 'Microsoft.Web/sites@2024-04-01' = {
+  name: 'kvReader'
+  location: location
+  kind: 'functionapp,linux'
+  properties: {
+    reserved: true
+    serverFarmId: appServicePlan.id
+    siteConfig: {
+      linuxFxVersion: 'DOTNET-ISOLATED|9.0'
+      appSettings: [
+        {
+          name: 'AzureWebJobsStorage'
+          value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
+        }
+        {
+          name: 'keyVaultName'
+          value: keyVaultName
+        }
+        {
+          name: 'FUNCTIONS_WORKER_RUNTIME'
+          value: 'dotnet-isolated'
+        }
+        {
+          name: 'FUNCTIONS_EXTENSION_VERSION'
+          value: '~4'
+        }
+        {
+          name: 'WEBSITE_NODE_DEFAULT_VERSION'
+          value: '~14'
+        }
+        {
+          name: 'WEBSITE_RUN_FROM_PACKAGE'
+          value: '1'
+        }
+        {
+          name: 'AZURE_CLIENT_ID'
+          value: userManagedIdentity.properties.clientId
+        }
+      ]
+    }
+    keyVaultReferenceIdentity: userManagedIdentity.id
+  }
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${userManagedIdentity.id}': {}
+    }
+  }
+}
 
-
-// resource sqlConnectionString 'Microsoft.Web/sites/config@2020-12-01' = {
-//   parent: functionApp
-//   name: 'connectionstrings'
-//   properties: {
-//     DefaultConnection: {
-//       value: 'Server=tcp:vikkzlsqlserver.database.windows.net,1433;Initial Catalog=${sqlDatabase.name};Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;Authentication="Active Directory Default";'
-//       type: 'SQLAzure'
-//     }
-//   }
-// }
-
-output functionAppId string = functionApp.id
+output functionAppId string = functionAppListener.id
