@@ -1,7 +1,0 @@
-### Insert KeyVault
-POST https://functionapp7nwlc5bh4hdba.azurewebsites.net/api/InsertKeyVault?code=2DeXBzoarov0N6b9s0xQkwEjdVbpK7bzL_qx2QIaudx7AzFutnlekQ%3D%3D
-Content-Type: application/json
-
-{
-  "Name": "TestKeyVault"
-}
