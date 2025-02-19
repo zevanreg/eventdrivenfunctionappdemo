@@ -4,15 +4,16 @@
       "name": "Timer",
       "type": "timerTrigger",
       "direction": "in",
-      "schedule": "0 * * * * *"
+      "schedule": "*/10 * * * * *"
     },
     { 
       "name": "ConfigIn",
       "type": "cosmosDB",
       "databaseName": "%cosmosDatabaseName%",
-      "containerName": "Config",
+      "containerName": "%cosmosConfigContainerName%",
       "connection": "cosmosdb",
-      "direction": "in" 
+      "direction": "in",
+      "sqlQuery": "SELECT * FROM c WHERE c.id = '1'"
     },
     { 
       "name": "Secrets",
@@ -27,7 +28,7 @@
         "name": "Workloads",
         "type": "cosmosDB",
         "databaseName": "%cosmosDatabaseName%",
-        "containerName": "Workloads",
+        "containerName": "%cosmosWorkloadsContainerName%",
         "createIfNotExists": true,
         "connection": "cosmosdb",
         "direction": "out" 
@@ -36,7 +37,7 @@
       "name": "Access",
       "type": "cosmosDB",
       "databaseName": "%cosmosDatabaseName%",
-      "containerName": "SecretsAccessedEvents",
+      "containerName": "%cosmosSecretsAccessContainerName%",
       "createIfNotExists": true,
       "connection": "cosmosdb",
       "direction": "out" 
