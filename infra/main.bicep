@@ -34,6 +34,18 @@ param cosmosDbConfigContainerName string = 'Config'
 @description('Name of the Cosmos DB container for secrets access events')
 param cosmosDbSecretsAccessContainerName string = 'SecretsAccessedEvents'
 
+@description('Name of the kvReader Function App')
+param funcAppKvReaderName string = 'kvReader${uniqueString(resourceGroup().id)}'
+
+@description('Name of the kvReader Function App')
+param funcAppKvEventsListenerName string = 'kvEventsListener${uniqueString(resourceGroup().id)}'
+
+@description('DOTNET or PS version of kvListener')
+@allowed([
+  'dotnet'
+  'ps'
+])
+param kvEventsListenerRuntime string = 'dotnet'
 
 module userManagedIdentityModule 'modules/identity.bicep' = {
   name: 'userManagedIdentityModule'
@@ -82,6 +94,9 @@ module functionAppModule 'modules/functionApp.bicep' = {
     cosmosDbWorkloadsContainerName: cosmosDbWorkloadsContainerName
     cosmosDbConfigContainerName: cosmosDbConfigContainerName
     workspaceId: logAnalyticsModule.outputs.workspaceId
+    kvReaderAppName: funcAppKvReaderName
+    kvEventsListenerAppName: funcAppKvEventsListenerName
+    kvEventsListenerRuntime: kvEventsListenerRuntime
     location: location
   }
   dependsOn: [

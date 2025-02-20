@@ -9,8 +9,13 @@ param cosmosDbSecretsAccessContainerName string
 param cosmosDbWorkloadsContainerName string
 param cosmosDbConfigContainerName string
 param workspaceId string
-
-var kvEventsListenerAppName = 'kvEventsListener'
+param kvReaderAppName string
+param kvEventsListenerAppName string
+@allowed([
+  'dotnet'
+  'ps'
+])
+param kvEventsListenerRuntime string
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' existing = {
   name: storageAccountName
@@ -44,23 +49,27 @@ resource functionAppListener 'Microsoft.Web/sites@2024-04-01' = {
     reserved: true
     serverFarmId: appServicePlan.id
     siteConfig: {
-      linuxFxVersion: 'DOTNET-ISOLATED|9.0'
+      linuxFxVersion: (kvEventsListenerRuntime == 'dotnet' ? 'DOTNET-ISOLATED|9.0' : 'PowerShell|7.4')
       appSettings: [
         {
           name: 'AzureWebJobsStorage'
           value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
         }
         {
-          name: 'testkey1'
-          value: '@Microsoft.KeyVault(SecretUri=https://${keyVaultName}.vault.azure.net/secrets/testkey1/)'
+          name: 'FUNCTIONS_WORKER_RUNTIME'
+          value: (kvEventsListenerRuntime == 'dotnet') ? 'dotnet-isolated' : 'powershell'
         }
         {
-          name: 'testkey2'
-          value: '@Microsoft.KeyVault(SecretUri=https://${keyVaultName}.vault.azure.net/secrets/testkey2/)'
+          name: 'FUNCTIONS_EXTENSION_VERSION'
+          value: '~4'
         }
         {
-          name: 'testkey3'
-          value: '@Microsoft.KeyVault(SecretUri=https://${keyVaultName}.vault.azure.net/secrets/testkey3/)'
+          name: 'WEBSITE_RUN_FROM_PACKAGE'
+          value: '1'
+        }
+        {
+          name: 'AZURE_CLIENT_ID'
+          value: userManagedIdentity.properties.clientId
         }
         {
           name: 'cosmosdb__accountEndpoint'
@@ -103,30 +112,10 @@ resource functionAppListener 'Microsoft.Web/sites@2024-04-01' = {
           value: workspaceId
         }
         {
-          name: 'FUNCTIONS_WORKER_RUNTIME'
-          value: 'dotnet-isolated'
-        }
-        {
-          name: 'FUNCTIONS_EXTENSION_VERSION'
-          value: '~4'
-        }
-        {
-          name: 'WEBSITE_NODE_DEFAULT_VERSION'
-          value: '~14'
-        }
-        {
-          name: 'WEBSITE_RUN_FROM_PACKAGE'
-          value: '1'
-        }
-        {
-          name: 'AZURE_CLIENT_ID'
-          value: userManagedIdentity.properties.clientId
-        }
-        {
           name: 'functionAppResourceId'
           value: resourceId('Microsoft.Web/sites', kvEventsListenerAppName)
         }        
-      ]
+      ]      
     }
     keyVaultReferenceIdentity: userManagedIdentity.id
   }
@@ -139,7 +128,7 @@ resource functionAppListener 'Microsoft.Web/sites@2024-04-01' = {
 }
 
 resource functionAppReader 'Microsoft.Web/sites@2024-04-01' = {
-  name: 'kvReader'
+  name: kvReaderAppName
   location: location
   kind: 'functionapp,linux'
   properties: {
@@ -153,10 +142,6 @@ resource functionAppReader 'Microsoft.Web/sites@2024-04-01' = {
           value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
         }
         {
-          name: 'keyVaultName'
-          value: keyVaultName
-        }
-        {
           name: 'FUNCTIONS_WORKER_RUNTIME'
           value: 'dotnet-isolated'
         }
@@ -165,16 +150,28 @@ resource functionAppReader 'Microsoft.Web/sites@2024-04-01' = {
           value: '~4'
         }
         {
-          name: 'WEBSITE_NODE_DEFAULT_VERSION'
-          value: '~14'
-        }
-        {
           name: 'WEBSITE_RUN_FROM_PACKAGE'
           value: '1'
         }
         {
           name: 'AZURE_CLIENT_ID'
           value: userManagedIdentity.properties.clientId
+        }
+        {
+          name: 'keyVaultName'
+          value: keyVaultName
+        }
+        {
+          name: 'testkey1'
+          value: '@Microsoft.KeyVault(SecretUri=https://${keyVaultName}.vault.azure.net/secrets/testkey1/)'
+        }
+        {
+          name: 'testkey2'
+          value: '@Microsoft.KeyVault(SecretUri=https://${keyVaultName}.vault.azure.net/secrets/testkey2/)'
+        }
+        {
+          name: 'testkey3'
+          value: '@Microsoft.KeyVault(SecretUri=https://${keyVaultName}.vault.azure.net/secrets/testkey3/)'
         }
       ]
     }
