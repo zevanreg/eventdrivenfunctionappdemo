@@ -13,7 +13,7 @@ public class WorkloadInfo
     {
         var appResourceId = row["AppResourceId"].ToString();
         Id = appResourceId.Replace('/', '_');
-        var match = Regex.Match(appResourceId, @"/subscriptions/(?<subscriptionId>[^/]+)/resourcegroups/(?<resourceGroup>[^/]+)/providers/Microsoft.Web/sites/(?<name>[^/]+)");
+        var match = Regex.Match(appResourceId, @"/subscriptions/(?<subscriptionId>[^/]+)/resourcegroups/(?<resourceGroup>[^/]+)/providers/(?<provider>[^/]+)/(?<resourceType>[^/]+)/(?<name>[^/]+)");
 
         if (match.Success)
         {

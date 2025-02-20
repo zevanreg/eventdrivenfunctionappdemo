@@ -20,14 +20,13 @@ $queryResults = Invoke-AzOperationalInsightsQuery -WorkspaceId $env:workspaceId 
 
 $secrets = @()
 $accessEvents = @()
-$workloads += @()
+$workloads = @()  # Initialize $workloads as an array
+
 # Iterate results
-foreach ($record in $queryResults.Results) {
+foreach ($record in $queryResults.Results)
+{
     # Parse CertificateUri to get the certificate name
-    $secretUri = $record.CertificateUri
-    $regex = [regex]::new("https://[^/]+/secrets/([^/?]+)")
-    $result = $regex.Match($secretUri)
-    $secretName = $result.Groups[1].Value
+    $secretName = Parse-KeyVaultSecretUrl -secretUrl $record.CertificateUri
 
     # Get the secret from Key Vault
     $secret = Get-AzKeyVaultSecret -VaultName $record.KeyvaultName -Name $secretName
@@ -60,14 +59,14 @@ foreach ($record in $queryResults.Results) {
         resourceGroup = $record.ResourceGroup
     }
 
-    $match = [regex]::Match($record.AppResourceId, "/subscriptions/(?<subscriptionId>[^/]+)/resourcegroups/(?<resourceGroup>[^/]+)/providers/Microsoft.Web/sites/(?<name>[^/]+)")
-    if ($match.Success -and $workloads -notcontains $appResourceId)
+    $appData = Parse-AzureResourceId -resourceId $record.AppResourceId
+    if ($null -ne $appData -and $workloads -notcontains $appResourceId)
     {
         $workloads += @{
             id = $appResourceId
-            subscriptionID = $match.Groups["subscriptionId"].Value
-            resourceGroup = $match.Groups["resourceGroup"].Value
-            name = $match.Groups["name"].Value
+            subscriptionID = $appData.SubscriptionId
+            resourceGroup = $appData.ResourceGroupName
+            name = $appData.ResourceName
             appType = $record.AppType
         }
     }
@@ -102,8 +101,9 @@ if ($lastAccessed.eventDate -ne $ConfigIn[0].eventDate)
 # Get the current universal time in the default string format
 $currentUTCtime = (Get-Date).ToUniversalTime()
 
-# The 'IsPastDue' porperty is 'true' when the current function invocation is later than scheduled.
-if ($Timer.IsPastDue) {
+# The 'IsPastDue' property is 'true' when the current function invocation is later than scheduled.
+if ($Timer.IsPastDue)
+{
     Write-Host "PowerShell timer is running late!"
 }
 

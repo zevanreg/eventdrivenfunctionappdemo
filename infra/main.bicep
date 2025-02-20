@@ -45,7 +45,7 @@ param funcAppKvEventsListenerName string = 'kvEventsListener${uniqueString(resou
   'dotnet'
   'ps'
 ])
-param kvEventsListenerRuntime string = 'dotnet'
+param kvEventsListenerRuntime string = 'ps'
 
 module userManagedIdentityModule 'modules/identity.bicep' = {
   name: 'userManagedIdentityModule'
